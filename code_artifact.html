@@ -1,0 +1,1426 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Длинные Нарды: Обитель Дракона</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #0d0504;
+            color: #f5ebd9;
+            font-family: 'Georgia', serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        #game-container {
+            width: 100vw;
+            height: 100vh;
+            max-width: 800px;
+            max-height: 1000px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            padding: 10px;
+        }
+
+        /* Панель статуса и управления */
+        .panel {
+            background: linear-gradient(135deg, #1f0b08 0%, #110504 100%);
+            border: 2px solid #522319;
+            border-radius: 12px;
+            padding: 12px 15px;
+            margin-bottom: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.8);
+            z-index: 10;
+        }
+
+        .row-space {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 1.2rem;
+            color: #dfb76c;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.9);
+            font-weight: bold;
+        }
+
+        .mode-btn {
+            background: #421811;
+            border: 1px solid #dfb76c;
+            color: #dfb76c;
+            padding: 6px 12px;
+            font-size: 0.8rem;
+            font-family: inherit;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+        .mode-btn:hover {
+            background: #dfb76c;
+            color: #110504;
+        }
+
+        .status-bar {
+            background: rgba(0,0,0,0.5);
+            border-radius: 8px;
+            padding: 8px 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9rem;
+            gap: 10px;
+        }
+
+        .turn-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: bold;
+        }
+
+        .turn-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: #fff;
+            box-shadow: 0 0 8px #fff;
+            display: inline-block;
+        }
+
+        /* Интерактивный 3D-контейнер для кубиков */
+        .dice-container {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .die-face {
+            width: 32px;
+            height: 32px;
+            background: radial-gradient(circle at 30% 30%, #ffffff 0%, #e2e8f0 70%, #cbd5e1 100%);
+            border: 1.5px solid #94a3b8;
+            border-radius: 6px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            padding: 3px;
+            box-sizing: border-box;
+            box-shadow: 0 3px 5px rgba(0,0,0,0.4), inset 0 -1.5px 0 #cbd5e1;
+        }
+
+        .die-face.black-die {
+            background: radial-gradient(circle at 30% 30%, #ef4444 0%, #b91c1c 70%, #7f1d1d 100%);
+            border: 1.5px solid #7f1d1d;
+            box-shadow: 0 3px 5px rgba(0,0,0,0.5), inset 0 -1.5px 0 #7f1d1d;
+        }
+
+        .die-dot {
+            width: 5px;
+            height: 5px;
+            background-color: #0f172a;
+            border-radius: 50%;
+            align-self: center;
+            justify-self: center;
+        }
+
+        .die-face.black-die .die-dot {
+            background-color: #f8fafc;
+        }
+
+        /* Обертка для холста */
+        .canvas-container {
+            flex: 1;
+            position: relative;
+            background-color: #1a0b08;
+            border-radius: 12px;
+            border: 4px solid #140705;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.9);
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            max-height: 100%;
+            max-width: 100%;
+        }
+
+        /* Табло результатов */
+        .score-panel {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 8px;
+            padding: 6px 12px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            border: 1px solid #3a1a14;
+        }
+
+        /* Нижняя панель действий */
+        .bottom-actions {
+            margin-top: 8px;
+            display: flex;
+            gap: 10px;
+            z-index: 10;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 14px;
+            font-family: inherit;
+            font-size: 1rem;
+            font-weight: bold;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            transition: all 0.15s;
+            text-transform: uppercase;
+        }
+
+        .btn-roll {
+            background: linear-gradient(to bottom, #e0a33a, #b57a1b);
+            color: #110504;
+            border-bottom: 3px solid #7d4f0b;
+        }
+        .btn-roll:active {
+            transform: translateY(2px);
+            border-bottom-width: 1px;
+        }
+        .btn-roll:disabled {
+            background: #2c2220;
+            color: #594f4d;
+            border: none;
+            box-shadow: none;
+            cursor: not-allowed;
+        }
+
+        .btn-action {
+            background: #3d1510;
+            color: #fff;
+            border: 1px solid #5c2c20;
+        }
+        .btn-action:hover {
+            background: #521c15;
+        }
+
+        .btn-bear {
+            background: linear-gradient(to bottom, #10b981, #047857);
+            color: #fff;
+            border-bottom: 3px solid #064e3b;
+        }
+        .btn-bear:active {
+            transform: translateY(2px);
+            border-bottom-width: 1px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Информационные плашки */
+        .notification {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-20px);
+            background: rgba(220, 38, 38, 0.95);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 0.9rem;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            transition: all 0.3s ease;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 100;
+        }
+        .notification.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .dice-board-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: flex;
+            gap: 24px;
+            pointer-events: none;
+            z-index: 30;
+            perspective: 1000px;
+            opacity: 0;
+            transition: opacity 0.4s ease, transform 0.4s ease;
+        }
+        .dice-board-overlay.visible {
+            opacity: 1;
+        }
+        .dice-board-overlay.dimmed {
+            opacity: 0.25;
+            filter: blur(0.5px);
+        }
+        .cube-wrapper {
+            width: 44px;
+            height: 44px;
+            perspective: 1000px;
+        }
+        .cube {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 1.2s cubic-bezier(0.2, 0.8, 0.25, 1.15);
+        }
+        .cube-face {
+            position: absolute;
+            width: 44px;
+            height: 44px;
+            background: radial-gradient(circle at 30% 30%, #ffffff 0%, #f1f5f9 70%, #e2e8f0 100%);
+            border: 1.5px solid #cbd5e1;
+            border-radius: 8px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            padding: 4px;
+            box-sizing: border-box;
+            backface-visibility: hidden;
+            box-shadow: inset 0 0 6px rgba(0,0,0,0.15), 0 4px 10px rgba(0,0,0,0.4);
+        }
+        
+        /* Черные/Оранжевые кубики для Дракона */
+        .cube.black-dice .cube-face {
+            background: radial-gradient(circle at 30% 30%, #ff7a45 0%, #ea580c 70%, #9a3412 100%);
+            border: 1.5px solid #7c2d12;
+            box-shadow: inset 0 0 6px rgba(0,0,0,0.3), 0 4px 10px rgba(0,0,0,0.5);
+        }
+        
+        .cube-face .die-dot {
+            width: 6px;
+            height: 6px;
+            background-color: #0f172a;
+            border-radius: 50%;
+            align-self: center;
+            justify-self: center;
+            box-shadow: inset 0 1px 1px rgba(0,0,0,0.5);
+        }
+        
+        .cube.black-dice .cube-face .die-dot {
+            background-color: #f8fafc;
+            box-shadow: inset 0 1px 1px rgba(255,255,255,0.3);
+        }
+
+        /* 3D-позиционирование граней куба */
+        .cube-face.front  { transform: rotateY(0deg) translateZ(22px); }
+        .cube-face.back   { transform: rotateY(180deg) translateZ(22px); }
+        .cube-face.top    { transform: rotateX(90deg) translateZ(22px); }
+        .cube-face.bottom { transform: rotateX(-90deg) translateZ(22px); }
+        .cube-face.left   { transform: rotateY(-90deg) translateZ(22px); }
+        .cube-face.right  { transform: rotateY(90deg) translateZ(22px); }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <!-- Верхняя Панель управления -->
+    <div class="panel">
+        <div class="row-space">
+            <h1>Драконьи Нарды</h1>
+            <button class="mode-btn" id="mode-btn">Режим: Против ИИ</button>
+        </div>
+        <div class="status-bar">
+            <div class="turn-indicator">
+                <span class="turn-dot" id="turn-dot"></span>
+                <span id="turn-txt">Ход Белых</span>
+            </div>
+            <!-- Сюда встраиваются 3D-кубики -->
+            <div class="dice-container" id="dice-display"></div>
+            <div id="moves-txt" style="color: #dfb76c; font-weight: bold; font-size: 0.85rem;">Бросьте кубики</div>
+        </div>
+        <!-- Табло результатов -->
+        <div class="score-panel">
+            <span>Выведено Белых: <strong id="white-out-cnt" style="color: #fff;">0 / 15</strong></span>
+            <span>Выведено Черных: <strong id="black-out-cnt" style="color: #ef4444;">0 / 15</strong></span>
+        </div>
+    </div>
+
+    <!-- Область игрового поля (Canvas) -->
+    <div class="canvas-container" id="canvas-container">
+        <canvas id="gameCanvas"></canvas>
+        <div class="notification" id="notification">Уведомление</div>
+
+        <div class="dice-board-overlay" id="dice-board-overlay">
+            <div class="cube-wrapper">
+                <div class="cube" id="board-cube-1">
+                    <div class="cube-face front">
+                        <div></div><div></div><div></div>
+                        <div></div><div class="die-dot"></div><div></div>
+                        <div></div><div></div><div></div>
+                    </div>
+                    <div class="cube-face back">
+                        <div class="die-dot"></div><div></div><div class="die-dot"></div>
+                        <div class="die-dot"></div><div></div><div class="die-dot"></div>
+                        <div class="die-dot"></div><div></div><div class="die-dot"></div>
+                    </div>
+                    <div class="cube-face top">
+                        <div class="die-dot"></div><div></div><div></div>
+                        <div></div><div></div><div></div>
+                        <div></div><div></div><div class="die-dot"></div>
+                    </div>
+                    <div class="cube-face bottom">
+                        <div class="die-dot"></div><div></div><div class="die-dot"></div>
+                        <div></div><div class="die-dot"></div><div></div>
+                        <div class="die-dot"></div><div></div><div class="die-dot"></div>
+                    </div>
+                    <div class="cube-face left">
+                        <div class="die-dot"></div><div></div><div></div>
+                        <div></div><div class="die-dot"></div><div></div>
+                        <div></div><div></div><div class="die-dot"></div>
+                    </div>
+                    <div class="cube-face right">
+                        <div class="die-dot"></div><div></div><div class="die-dot"></div>
+                        <div></div><div></div><div></div>
+                        <div class="die-dot"></div><div></div><div class="die-dot"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="cube-wrapper">
+                <div class="cube" id="board-cube-2">
+                    <div class="cube-face front">
+                        <div></div><div></div><div></div>
+                        <div></div><div class="die-dot"></div><div></div>
+                        <div></div><div></div><div></div>
+                    </div>
+                    <div class="cube-face back">
+                        <div class="die-dot"></div><div></div><div class="die-dot"></div>
+                        <div class="die-dot"></div><div></div><div class="die-dot"></div>
+                        <div class="die-dot"></div><div></div><div class="die-dot"></div>
+                    </div>
+                    <div class="cube-face top">
+                        <div class="die-dot"></div><div></div><div></div>
+                        <div></div><div></div><div></div>
+                        <div></div><div></div><div class="die-dot"></div>
+                    </div>
+                    <div class="cube-face bottom">
+                        <div class="die-dot"></div><div></div><div class="die-dot"></div>
+                        <div></div><div class="die-dot"></div><div></div>
+                        <div class="die-dot"></div><div></div><div class="die-dot"></div>
+                    </div>
+                    <div class="cube-face left">
+                        <div class="die-dot"></div><div></div><div></div>
+                        <div></div><div class="die-dot"></div><div></div>
+                        <div></div><div></div><div class="die-dot"></div>
+                    </div>
+                    <div class="cube-face right">
+                        <div class="die-dot"></div><div></div><div class="die-dot"></div>
+                        <div></div><div></div><div></div>
+                        <div class="die-dot"></div><div></div><div class="die-dot"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Нижние Кнопки Действий -->
+    <div class="bottom-actions">
+        <button class="btn btn-roll" id="roll-btn">Бросить кубики</button>
+        <button class="btn btn-bear hidden" id="bear-btn">Вывести шашку</button>
+        <button class="btn btn-action hidden" id="skip-btn">Сдать ход</button>
+    </div>
+</div>
+
+<script>
+    // Звуки с использованием встроенного Web Audio API (без внешних зависимостей)
+    const Sound = {
+        ctx: null,
+        init() {
+            if (!this.ctx) {
+                this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        },
+        playMove() {
+            this.init();
+            if (!this.ctx) return;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.frequency.setValueAtTime(140, this.ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(30, this.ctx.currentTime + 0.12);
+            gain.gain.setValueAtTime(0.25, this.ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.12);
+            osc.start();
+            osc.stop(this.ctx.currentTime + 0.12);
+        },
+        playDice() {
+            this.init();
+            if (!this.ctx) return;
+            for (let i = 0; i < 4; i++) {
+                const delay = i * 0.06;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.frequency.setValueAtTime(260 + Math.random() * 180, this.ctx.currentTime + delay);
+                gain.gain.setValueAtTime(0.12, this.ctx.currentTime + delay);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + delay + 0.05);
+                osc.start(this.ctx.currentTime + delay);
+                osc.stop(this.ctx.currentTime + delay + 0.05);
+            }
+        }
+    };
+
+    const WHITE = 'white';
+    const BLACK = 'black';
+
+    // Состояние игры
+    let state = {
+        board: Array(24).fill(null).map(() => ({ color: null, count: 0 })),
+        turn: WHITE,
+        dice: [],
+        movesLeft: [],
+        selectedIdx: null,
+        headCheckersTaken: 0,
+        turnsCountWhite: 0,
+        turnsCountBlack: 0,
+        whiteOut: 0,
+        blackOut: 0,
+        vsAI: true
+    };
+
+    // Инициализация стартовой доски
+    function setupInitialBoard() {
+        state.board = Array(24).fill(null).map(() => ({ color: null, count: 0 }));
+        state.board[0] = { color: WHITE, count: 15 }; // Игрок (Белые) начинает в левом нижнем углу (0)
+        state.board[12] = { color: BLACK, count: 15 }; // Оппонент (Черные) начинает в правом верхнем углу (12)
+        state.turn = WHITE;
+        state.dice = [];
+        state.movesLeft = [];
+        state.selectedIdx = null;
+        state.headCheckersTaken = 0;
+        state.turnsCountWhite = 0;
+        state.turnsCountBlack = 0;
+        state.whiteOut = 0;
+        state.blackOut = 0;
+
+        // Скрываем 3D-кубики при перезапуске стола
+        const overlay = document.getElementById('dice-board-overlay');
+        if (overlay) overlay.classList.remove('visible');
+    }
+    setupInitialBoard();
+
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const container = document.getElementById('canvas-container');
+
+    let cellWidth = 0;
+    let cellHeight = 0;
+    let barWidth = 24;
+
+    function animateBoardCubes(d1, d2, color) {
+        const overlay = document.getElementById('dice-board-overlay');
+        const cube1 = document.getElementById('board-cube-1');
+        const cube2 = document.getElementById('board-cube-2');
+        
+        if (!overlay || !cube1 || !cube2) return;
+
+        overlay.classList.remove('dimmed');
+        overlay.classList.add('visible');
+        
+        if (color === BLACK) {
+            cube1.classList.add('black-dice');
+            cube2.classList.add('black-dice');
+        } else {
+            cube1.classList.remove('black-dice');
+            cube2.classList.remove('black-dice');
+        }
+        
+        const rot1 = getCubeRotation(d1);
+        const rot2 = getCubeRotation(d2);
+        
+        // Генерируем случайное число оборотов (от 3 до 5 полных оборотов) для эффекта качения
+        const spinX1 = (Math.floor(Math.random() * 3) + 3) * 360;
+        const spinY1 = (Math.floor(Math.random() * 3) + 3) * 360;
+        const spinX2 = (Math.floor(Math.random() * 3) + 3) * 360;
+        const spinY2 = (Math.floor(Math.random() * 3) + 3) * 360;
+        
+        // Легкий рассинхрон во времени анимации для естественности
+        cube1.style.transition = 'transform 1.1s cubic-bezier(0.2, 0.8, 0.25, 1.1)';
+        cube2.style.transition = 'transform 1.25s cubic-bezier(0.15, 0.85, 0.3, 1.15)';
+        
+        cube1.style.transform = `rotateX(${spinX1 + rot1.x}deg) rotateY(${spinY1 + rot1.y}deg)`;
+        cube2.style.transform = `rotateX(${spinX2 + rot2.x}deg) rotateY(${spinY2 + rot2.y}deg)`;
+    }
+
+    function getCubeRotation(value) {
+        switch(value) {
+            case 1: return { x: 0, y: 0 };
+            case 6: return { x: 0, y: 180 };
+            case 2: return { x: -90, y: 0 };
+            case 5: return { x: 90, y: 0 };
+            case 3: return { x: 0, y: 90 };
+            case 4: return { x: 0, y: -90 };
+            default: return { x: 0, y: 0 };
+        }
+    }
+
+    function updateDiceVisibility() {
+        const overlay = document.getElementById('dice-board-overlay');
+        if (!overlay) return;
+
+        if (state.movesLeft.length === 0) {
+            overlay.classList.remove('visible');
+        } else if (state.selectedIdx !== null) {
+            // Приглушаем кубики, когда игрок выбирает цель движения, чтобы не мешать обзору
+            overlay.classList.add('dimmed');
+        } else {
+            overlay.classList.remove('dimmed');
+            overlay.classList.add('visible');
+        }
+    }
+
+    function resizeCanvas() {
+        const rect = container.getBoundingClientRect();
+        canvas.width = rect.width;
+        canvas.height = rect.height;
+        
+        // Перерасчет размеров лунок (защищено от отрицательных значений при инициализации)
+        cellWidth = Math.max(0.1, (canvas.width - barWidth) / 12);
+        cellHeight = Math.max(0.1, canvas.height / 2);
+        draw();
+    }
+    window.addEventListener('resize', resizeCanvas);
+    setTimeout(resizeCanvas, 100);
+
+    // Расчет расстояния для движения ПО часовой стрелке
+    function getDistance(from, to, playerColor) {
+        if (playerColor === WHITE) {
+            // Белые идут: 0 (левый низ) -> 11 (правый низ) -> 12 (правый верх) -> 23 (левый верх)
+            if (to > from) return to - from;
+            return -1;
+        } else {
+            // Черные идут по часовой стрелке: 12 (правый верх) -> 23 (левый верх) -> 0 (левый низ) -> 11 (правый низ)
+            if (from >= 12) {
+                if (to >= 12 && to > from) return to - from;
+                if (to < 12) return (24 - from) + to;
+            } else {
+                if (to < 12 && to > from) return to - from;
+            }
+            return -1;
+        }
+    }
+
+    // Возвращает индекс лунки после прохождения определенного расстояния по часовой стрелке
+    function getTargetIndex(from, steps, color) {
+        if (color === WHITE) {
+            let to = from + steps;
+            if (to > 23) return -1; // Выход за пределы (вывод шашек)
+            return to;
+        } else {
+            let distFromStart = (from - 12 + 24) % 24;
+            if (distFromStart + steps > 23) {
+                return -1; // Выход за пределы (вывод шашек)
+            }
+            return (from + steps) % 24;
+        }
+    }
+
+    function isAllInHome(playerColor) {
+        // Дом белых в верхнем левом секторе (18-23)
+        // Дом черных в нижнем правом секторе (6-11)
+        const homeStart = playerColor === WHITE ? 18 : 6;
+        const homeEnd = playerColor === WHITE ? 23 : 11;
+        let outsideCount = 0;
+        for (let i = 0; i < 24; i++) {
+            if (state.board[i].color === playerColor && (i < homeStart || i > homeEnd)) {
+                outsideCount += state.board[i].count;
+            }
+        }
+        return outsideCount === 0;
+    }
+
+    function canBearOff(fromIdx, moveStep, playerColor) {
+        if (!isAllInHome(playerColor)) return false;
+        if (playerColor === WHITE) {
+            if (fromIdx + moveStep === 24) return true;
+            if (fromIdx + moveStep > 24) {
+                for (let i = 18; i < fromIdx; i++) {
+                    if (state.board[i].color === WHITE && state.board[i].count > 0) return false;
+                }
+                return true;
+            }
+        } else {
+            const stepsToExit = 12 - fromIdx;
+            if (moveStep === stepsToExit) return true;
+            if (moveStep > stepsToExit) {
+                for (let i = 6; i < fromIdx; i++) {
+                    if (state.board[i].color === BLACK && state.board[i].count > 0) return false;
+                }
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function getMaxFromHead(playerColor) {
+        const turnsCount = playerColor === WHITE ? state.turnsCountWhite : state.turnsCountBlack;
+        if (turnsCount === 0) {
+            if (state.dice.length > 0 && state.dice[0] === state.dice[1]) {
+                if ([3, 4, 6].includes(state.dice[0])) return 2;
+            }
+        }
+        return 1;
+    }
+
+    // Алгоритм поиска всех путей (Pathfinding) для составных ходов (комбо-ходов)
+    function getReachableTargets(fromIdx, color) {
+        if (fromIdx === null || state.movesLeft.length === 0) return [];
+        
+        const headIdx = color === WHITE ? 0 : 12;
+        if (fromIdx === headIdx && state.headCheckersTaken >= getMaxFromHead(color)) {
+            return []; // С головы уже снято максимально доступное количество фишек
+        }
+
+        let results = []; // Массив объектов { targetIdx, movesUsed: [] }
+        let queue = [{ currentIdx: fromIdx, movesUsed: [], remainingDice: [...state.movesLeft] }];
+        let visited = new Set();
+
+        while (queue.length > 0) {
+            let { currentIdx, movesUsed, remainingDice } = queue.shift();
+            let uniqueDice = [...new Set(remainingDice)];
+
+            for (let die of uniqueDice) {
+                let targetIdx = getTargetIndex(currentIdx, die, color);
+                if (targetIdx !== -1) {
+                    let targetCell = state.board[targetIdx];
+                    // Нарды длинные: нельзя встать на чужую шашку
+                    if (targetCell.color === null || targetCell.color === color) {
+                        let newMovesUsed = [...movesUsed, die];
+                        
+                        // Создаем уникальный ключ визита для избежания вечных циклов
+                        let key = targetIdx + "-" + [...newMovesUsed].sort().join(",");
+                        if (!visited.has(key)) {
+                            visited.add(key);
+
+                            let nextRemaining = [...remainingDice];
+                            nextRemaining.splice(nextRemaining.indexOf(die), 1);
+
+                            results.push({
+                                targetIdx: targetIdx,
+                                movesUsed: newMovesUsed
+                            });
+
+                            queue.push({
+                                currentIdx: targetIdx,
+                                movesUsed: newMovesUsed,
+                                remainingDice: nextRemaining
+                            });
+                        }
+                    }
+                }
+            }
+        }
+        return results;
+    }
+
+    function getValidTargets(fromIdx) {
+        const reachable = getReachableTargets(fromIdx, state.turn);
+        return reachable.map(r => r.targetIdx);
+    }
+
+    // Построение точек кубиков на чистом CSS в зависимости от значения
+    function getDiceDotsHTML(value) {
+        const dotPositions = {
+            1: [4],
+            2: [0, 8],
+            3: [0, 4, 8],
+            4: [0, 2, 6, 8],
+            5: [0, 2, 4, 6, 8],
+            6: [0, 2, 3, 5, 6, 8]
+        };
+        const activeDots = dotPositions[value] || [];
+        let html = '';
+        for (let i = 0; i < 9; i++) {
+            if (activeDots.includes(i)) {
+                html += '<div class="die-dot"></div>';
+            } else {
+                html += '<div></div>';
+            }
+        }
+        return html;
+    }
+
+    function render() {
+        // 1. Статус хода
+        const turnTxt = document.getElementById('turn-txt');
+        const turnDot = document.getElementById('turn-dot');
+        turnTxt.innerText = state.turn === WHITE ? "Ход Белых" : "Ход Черных";
+        if (state.turn === WHITE) {
+            turnDot.style.color = '#fff';
+            turnDot.style.backgroundColor = '#fff';
+            turnDot.style.boxShadow = '0 0 8px #fff';
+        } else {
+            turnDot.style.color = '#ef4444';
+            turnDot.style.backgroundColor = '#ef4444';
+            turnDot.style.boxShadow = '0 0 8px #ef4444';
+        }
+
+        // 2. Кубики (3D-эффект на CSS с точками)
+        const diceContainer = document.getElementById('dice-display');
+        diceContainer.innerHTML = '';
+        state.dice.forEach(val => {
+            const die = document.createElement('div');
+            die.className = `die-face ${state.turn === BLACK ? 'black-die' : ''}`;
+            die.innerHTML = getDiceDotsHTML(val);
+            diceContainer.appendChild(die);
+        });
+
+        // 3. Шаги
+        const movesTxt = document.getElementById('moves-txt');
+        if (state.movesLeft.length > 0) {
+            movesTxt.innerText = `Шаги: ${state.movesLeft.join(', ')}`;
+        } else {
+            movesTxt.innerText = "Бросьте кубики";
+        }
+
+        // 4. Счет результатов
+        document.getElementById('white-out-cnt').innerText = `${state.whiteOut} / 15`;
+        document.getElementById('black-out-cnt').innerText = `${state.blackOut} / 15`;
+
+        // 5. Кнопки управления
+        document.getElementById('roll-btn').disabled = state.movesLeft.length > 0;
+        document.getElementById('skip-btn').classList.toggle('hidden', state.movesLeft.length === 0);
+
+        // Проверяем кнопки вывода фишек
+        updateBearOffUI();
+
+        // Перерисовываем холст
+        draw();
+
+        // Обновляем отображение анимированных 3D-кубиков на поле
+        updateDiceVisibility();
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        ctx.fillStyle = '#2c120e';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.save();
+        ctx.strokeStyle = 'rgba(223, 183, 108, 0.12)';
+        ctx.lineWidth = 2;
+        ctx.fillStyle = 'rgba(223, 183, 108, 0.03)';
+        
+        // Рисуем эмблемы драконов на левой и правой сторонах доски
+        const sides = [canvas.width * 0.25, canvas.width * 0.75];
+        sides.forEach(cx => {
+            ctx.beginPath();
+            ctx.arc(cx, canvas.height / 2, Math.min(canvas.width * 0.15, 80), 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // Стилизованный дракон в круге (векторные пути)
+            ctx.save();
+            ctx.translate(cx, canvas.height / 2);
+            const scale = Math.min(canvas.width / 800, 1);
+            ctx.scale(scale, scale);
+            ctx.beginPath();
+            // Внутренний завиток дракона (S-образная спираль восточного дракона)
+            ctx.moveTo(0, -40);
+            ctx.bezierCurveTo(30, -40, 40, -10, 20, 10);
+            ctx.bezierCurveTo(0, 30, -30, 40, -20, -10);
+            ctx.bezierCurveTo(-10, -30, 10, -20, 0, 0);
+            ctx.strokeStyle = 'rgba(223, 183, 108, 0.25)';
+            ctx.lineWidth = 4;
+            ctx.stroke();
+
+            // Крылья / пламя дракона
+            ctx.beginPath();
+            ctx.moveTo(-20, 10);
+            ctx.lineTo(-35, 25);
+            ctx.lineTo(-20, 25);
+            ctx.lineTo(-30, 40);
+            ctx.lineTo(0, 20);
+            ctx.fillStyle = 'rgba(223, 183, 108, 0.15)';
+            ctx.fill();
+            ctx.restore();
+        });
+        ctx.restore();
+
+        const possibleTargets = getValidTargets(state.selectedIdx);
+        for (let i = 0; i < 24; i++) {
+            const coords = getCellCoords(i);
+            const isEven = i % 2 === 0;
+            
+            // Цвет лунки
+            ctx.fillStyle = isEven ? '#311511' : '#3d1b14';
+
+            // Если лунка выбрана
+            if (state.selectedIdx === i) {
+                ctx.fillStyle = '#5c3c12';
+            }
+
+            // Если лунка доступна для хода
+            if (possibleTargets.includes(i)) {
+                ctx.fillStyle = '#123d24';
+            }
+
+            // Рисуем треугольник
+            ctx.beginPath();
+            if (i < 12) {
+                // Лунки 0..11 (Нижний ряд): Нарисованы на НИЖНЕЙ стороне холста (острия смотрят вверх)
+                ctx.moveTo(coords.x, canvas.height);
+                ctx.lineTo(coords.x + cellWidth, canvas.height);
+                ctx.lineTo(coords.x + cellWidth / 2, canvas.height - cellHeight * 0.75);
+            } else {
+                // Лунки 12..23 (Верхний ряд): Нарисованы на ВЕРХНЕЙ стороне холста (острия смотрят вниз)
+                ctx.moveTo(coords.x, 0);
+                ctx.lineTo(coords.x + cellWidth, 0);
+                ctx.lineTo(coords.x + cellWidth / 2, cellHeight * 0.75);
+            }
+            ctx.closePath();
+            ctx.fill();
+
+            // Зеленая подсветка контура для доступных целей
+            if (possibleTargets.includes(i)) {
+                ctx.strokeStyle = '#34d399';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+
+            // Заметная разметка лунок (крупная, с обводкой)
+            ctx.save();
+            ctx.fillStyle = '#dfb76c';
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 3;
+            ctx.font = 'bold 14px Georgia, serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            const num = (i % 6) + 1;
+            let textY;
+            if (i < 12) {
+                // Нижний ряд (0..11): цифры перенесены в самый низ экрана
+                textY = canvas.height - 18;
+            } else {
+                // Верхний ряд (12..23): цифры в нижней части верхнего ряда (около бара)
+                textY = cellHeight - 18;
+            }
+            
+            ctx.strokeText(num, coords.x + cellWidth / 2, textY);
+            ctx.fillText(num, coords.x + cellWidth / 2, textY);
+            ctx.restore();
+
+            const cellData = state.board[i];
+            if (cellData.count > 0) {
+                const count = cellData.count;
+                const checkerRadius = Math.max(0.1, Math.min(cellWidth * 0.4, 16));
+                const checkerDiameter = checkerRadius * 2;
+                const maxOccupiedHeight = cellHeight * 0.78; // Оставляем аккуратный зазор
+
+                let step = checkerRadius * 1.3; 
+                if (count > 1) {
+                    const totalHeightWithStandardStep = checkerDiameter + (count - 1) * step;
+                    if (totalHeightWithStandardStep > maxOccupiedHeight) {
+                        step = (maxOccupiedHeight - checkerDiameter) / (count - 1);
+                        step = Math.max(checkerRadius * 0.25, step); // Ограничиваем сжатие для читаемости
+                    }
+                }
+
+                for (let j = 0; j < count; j++) {
+                    const cx = coords.x + cellWidth / 2;
+                    let cy;
+                    if (i < 12) {
+                        // На нижнем ряду шашки стопкуются снизу вверх
+                        cy = canvas.height - checkerRadius - 8 - j * step;
+                    } else {
+                        // На верхнем ряду шашки стопкуются сверху вниз
+                        cy = checkerRadius + 8 + j * step;
+                    }
+
+                    // Отрисовка тела фишки с драконьим тиснением
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, checkerRadius, 0, Math.PI * 2);
+                    
+                    const grad = ctx.createRadialGradient(cx - checkerRadius/3, cy - checkerRadius/3, 1, cx, cy, checkerRadius);
+                    if (cellData.color === WHITE) {
+                        grad.addColorStop(0, '#ffffff');
+                        grad.addColorStop(0.5, '#e2e8f0');
+                        grad.addColorStop(1, '#cbd5e1');
+                        ctx.strokeStyle = '#94a3b8';
+                    } else {
+                        grad.addColorStop(0, '#ff7a45');
+                        grad.addColorStop(0.5, '#ea580c');
+                        grad.addColorStop(1, '#9a3412');
+                        ctx.strokeStyle = '#7c2d12';
+                    }
+                    ctx.fillStyle = grad;
+                    ctx.shadowColor = 'rgba(0,0,0,0.5)';
+                    ctx.shadowBlur = 4;
+                    ctx.shadowOffsetY = 2;
+                    ctx.fill();
+                    ctx.restore();
+                    
+                    ctx.lineWidth = 1.5;
+                    ctx.stroke();
+
+                    // Внутренний декоративный круг
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, Math.max(0.05, checkerRadius * 0.6), 0, Math.PI * 2);
+                    ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+                    ctx.stroke();
+
+                    // Отображаем общее число на самой верхней фишке для удобства подсчета
+                    if (j === count - 1 && count > 1) {
+                        ctx.save();
+                        ctx.fillStyle = cellData.color === WHITE ? '#1e293b' : '#ffffff';
+                        ctx.font = 'bold 11px Arial';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(count, cx, cy);
+                        ctx.restore();
+                    }
+                }
+            }
+        }
+
+        ctx.fillStyle = '#140705';
+        ctx.fillRect(Math.max(0, canvas.width / 2 - barWidth / 2), 0, barWidth, canvas.height);
+        
+        // Золотые драконы на баре
+        ctx.fillStyle = '#dfb76c';
+        ctx.font = '16px Georgia';
+        ctx.textAlign = 'center';
+        ctx.fillText('🐉', canvas.width / 2, 40);
+        ctx.fillText('🐉', canvas.width / 2, canvas.height - 30);
+    }
+
+    // Получение координат по индексу лунки
+    function getCellCoords(idx) {
+        let col = 0;
+        if (idx < 12) {
+            // Нижний ряд (0..11): Слева направо. Лунка 0 — в левом нижнем углу!
+            col = idx;
+        } else {
+            // Верхний ряд (12..23): Справа налево. Лунка 12 — в правом верхнем углу!
+            col = 23 - idx;
+        }
+        let x = col * cellWidth;
+        if (col >= 6) {
+            x += barWidth;
+        }
+        return { x };
+    }
+
+    // Обработка клика/касания по холсту
+    canvas.addEventListener('click', function(e) {
+        const rect = canvas.getBoundingClientRect();
+        const clientX = e.clientX - rect.left;
+        const clientY = e.clientY - rect.top;
+
+        // Верхняя половина экрана — это 12..23, нижняя — 0..11
+        let isTop = clientY < canvas.height / 2;
+
+        // Проверяем, кликнули ли на центральный бар
+        const barLeft = canvas.width / 2 - barWidth / 2;
+        if (clientX >= barLeft && clientX <= barLeft + barWidth) {
+            return;
+        }
+
+        let adjustedX = clientX;
+        if (clientX >= barLeft + barWidth) {
+            adjustedX -= barWidth;
+        }
+        const col = Math.floor(adjustedX / cellWidth);
+        if (col < 0 || col > 11) return;
+
+        let idx = -1;
+        if (isTop) {
+            // Верхний ряд (12..23): Справа налево (col = 23 - idx => idx = 23 - col)
+            idx = 23 - col;
+        } else {
+            // Нижний ряд (0..11): Слева направо (col = idx => idx = col)
+            idx = col;
+        }
+
+        if (idx >= 0 && idx < 24) {
+            handlePointClick(idx);
+        }
+    });
+
+    // Обработка клика по лунке
+    function handlePointClick(idx) {
+        if (state.movesLeft.length === 0) return;
+        if (state.vsAI && state.turn === BLACK) return; // Ход компьютера
+
+        if (state.selectedIdx === null) {
+            // Выбираем шашку
+            if (state.board[idx].color === state.turn && state.board[idx].count > 0) {
+                const head = state.turn === WHITE ? 0 : 12;
+                if (idx === head && state.headCheckersTaken >= getMaxFromHead(state.turn)) {
+                    notify("Нельзя снимать больше с головы!");
+                    return;
+                }
+                state.selectedIdx = idx;
+                Sound.playMove();
+                render();
+            }
+        } else {
+            // Если повторно нажали на ту же шашку — сбрасываем выбор
+            if (state.selectedIdx === idx) {
+                state.selectedIdx = null;
+                render();
+                return;
+            }
+
+            const targets = getValidTargets(state.selectedIdx);
+            if (targets.includes(idx)) {
+                // Ищем шаги, которые привели нас к этой лунке
+                const paths = getReachableTargets(state.selectedIdx, state.turn);
+                const matchingPath = paths.find(p => p.targetIdx === idx);
+                
+                if (matchingPath) {
+                    executeMove(state.selectedIdx, idx, matchingPath.movesUsed);
+                }
+            } else {
+                // Перевыбор другой своей шашки
+                if (state.board[idx].color === state.turn && state.board[idx].count > 0) {
+                    const head = state.turn === WHITE ? 0 : 12;
+                    if (idx === head && state.headCheckersTaken >= getMaxFromHead(state.turn)) {
+                        notify("С головы уже снято!");
+                        state.selectedIdx = null;
+                    } else {
+                        state.selectedIdx = idx;
+                        Sound.playMove();
+                    }
+                    render();
+                } else {
+                    state.selectedIdx = null;
+                    render();
+                }
+            }
+        }
+    }
+
+    // Совершение хода
+    function executeMove(from, to, usedMovesList) {
+        state.board[from].count--;
+        if (state.board[from].count === 0) state.board[from].color = null;
+
+        state.board[to].count++;
+        state.board[to].color = state.turn;
+
+        const headIdx = state.turn === WHITE ? 0 : 12;
+        if (from === headIdx) {
+            state.headCheckersTaken++;
+        }
+
+        //  Удаление использованных кубиков из списка доступных
+        usedMovesList.forEach(m => {
+            const mIdx = state.movesLeft.indexOf(m);
+            if (mIdx !== -1) {
+                state.movesLeft.splice(mIdx, 1);
+            }
+        });
+
+        state.selectedIdx = null;
+        Sound.playMove();
+        
+        if (state.movesLeft.length === 0) {
+            endTurn();
+        } else {
+            render();
+            checkAndAutoPass();
+        }
+    }
+
+    // Автоматическая проверка на доступность ходов
+    function checkAndAutoPass() {
+        if (state.movesLeft.length === 0) return;
+        
+        let canMove = false;
+        for (let i = 0; i < 24; i++) {
+            if (state.board[i].color === state.turn && state.board[i].count > 0) {
+                const targets = getValidTargets(i);
+                if (targets.length > 0) {
+                    canMove = true;
+                    break;
+                }
+                // Проверяем возможность выброса
+                if (isAllInHome(state.turn)) {
+                    for (let m of state.movesLeft) {
+                        if (canBearOff(i, m, state.turn)) {
+                            canMove = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            if (canMove) break;
+        }
+
+        if (!canMove && state.movesLeft.length > 0) {
+            notify("Нет доступных ходов!");
+            document.getElementById('skip-btn').classList.remove('hidden');
+            document.getElementById('skip-btn').innerText = "Пропустить ход";
+        } else {
+            document.getElementById('skip-btn').classList.add('hidden');
+        }
+    }
+
+    // Смена хода
+    function endTurn() {
+        if (state.turn === WHITE) state.turnsCountWhite++;
+        else state.turnsCountBlack++;
+
+        state.turn = state.turn === WHITE ? BLACK : WHITE;
+        state.dice = [];
+        state.movesLeft = [];
+        state.selectedIdx = null;
+        state.headCheckersTaken = 0;
+        
+        document.getElementById('skip-btn').classList.add('hidden');
+        render();
+
+        // Запуск хода ИИ
+        if (state.vsAI && state.turn === BLACK) {
+            setTimeout(executeAIMove, 900);
+        }
+    }
+
+    // Стратегия ИИ (Компьютера-Дракона)
+    function executeAIMove() {
+        if (state.turn !== BLACK) return;
+
+        Sound.playDice();
+        const d1 = Math.floor(Math.random() * 6) + 1;
+        const d2 = Math.floor(Math.random() * 6) + 1;
+        state.dice = [d1, d2];
+        state.movesLeft = (d1 === d2) ? [d1, d1, d1, d1] : [d1, d2];
+        state.headCheckersTaken = 0;
+
+        animateBoardCubes(d1, d2, BLACK);
+        render();
+
+        function makeStep() {
+            if (state.movesLeft.length === 0 || state.turn !== BLACK) return;
+
+            let possibleMoves = [];
+
+            for (let i = 0; i < 24; i++) {
+                if (state.board[i].color === BLACK && state.board[i].count > 0) {
+                    
+                    // Проверка вывода фишек
+                    if (isAllInHome(BLACK)) {
+                        for (let m of state.movesLeft) {
+                            if (canBearOff(i, m, BLACK)) {
+                                possibleMoves.push({
+                                    type: 'bear',
+                                    from: i,
+                                    step: m,
+                                    priority: 1000 + i // Чем дальше в доме — тем важнее её вывести
+                                });
+                            }
+                        }
+                    }
+
+                    // Перемещения (поддерживаются составные и одиночные шаги)
+                    const paths = getReachableTargets(i, BLACK);
+                    paths.forEach(p => {
+                        const dist = getDistance(i, p.targetIdx, BLACK);
+                        let priority = p.targetIdx; // Стремление вести фишки вперед
+
+                        if (i === 12) priority += 50; // Приоритет освобождения головы
+                        
+                        possibleMoves.push({
+                            type: 'move',
+                            from: i,
+                            to: p.targetIdx,
+                            steps: p.movesUsed,
+                            priority: priority
+                        });
+                    });
+                }
+            }
+
+            if (possibleMoves.length === 0) {
+                endTurn();
+                return;
+            }
+
+            possibleMoves.sort((a, b) => b.priority - a.priority);
+            const best = possibleMoves[0];
+
+            if (best.type === 'bear') {
+                state.board[best.from].count--;
+                if (state.board[best.from].count === 0) state.board[best.from].color = null;
+                state.blackOut++;
+
+                if (best.from === 12) state.headCheckersTaken++;
+
+                const mIdx = state.movesLeft.indexOf(best.step);
+                state.movesLeft.splice(mIdx, 1);
+
+                Sound.playMove();
+
+                if (state.blackOut === 15) {
+                    alert("ДРАКОН ПОБЕДИЛ!");
+                    setupInitialBoard();
+                    render();
+                    return;
+                }
+            } else {
+                state.board[best.from].count--;
+                if (state.board[best.from].count === 0) state.board[best.from].color = null;
+
+                state.board[best.to].count++;
+                state.board[best.to].color = BLACK;
+
+                if (best.from === 12) state.headCheckersTaken++;
+
+                // Удаляем использованные шаги
+                best.steps.forEach(s => {
+                    const mIdx = state.movesLeft.indexOf(s);
+                    if (mIdx !== -1) state.movesLeft.splice(mIdx, 1);
+                });
+
+                Sound.playMove();
+            }
+
+            render();
+
+            if (state.movesLeft.length > 0) {
+                setTimeout(makeStep, 600);
+            } else {
+                endTurn();
+            }
+        }
+
+        setTimeout(makeStep, 600);
+    }
+
+    // Вывод фишек из дома
+    function updateBearOffUI() {
+        const bearBtn = document.getElementById('bear-btn');
+        if (state.selectedIdx !== null && isAllInHome(state.turn)) {
+            let possibleStep = null;
+            for (let m of state.movesLeft) {
+                if (canBearOff(state.selectedIdx, m, state.turn)) {
+                    possibleStep = m;
+                    break;
+                }
+            }
+
+            if (possibleStep !== null) {
+                bearBtn.classList.remove('hidden');
+                bearBtn.onclick = () => {
+                    state.board[state.selectedIdx].count--;
+                    if (state.board[state.selectedIdx].count === 0) {
+                        state.board[state.selectedIdx].color = null;
+                    }
+
+                    if (state.turn === WHITE) state.whiteOut++;
+                    else state.blackOut++;
+
+                    const mIdx = state.movesLeft.indexOf(possibleStep);
+                    state.movesLeft.splice(mIdx, 1);
+
+                    Sound.playMove();
+
+                    if (state.selectedIdx === (state.turn === WHITE ? 0 : 12)) {
+                        state.headCheckersTaken++;
+                    }
+
+                    state.selectedIdx = null;
+
+                    if (state.whiteOut === 15) {
+                        alert("ВЫ ПОБЕДИЛИ!");
+                        setupInitialBoard();
+                        render();
+                    } else if (state.blackOut === 15) {
+                        alert("ОППОНЕНТ ПОБЕДИЛ!");
+                        setupInitialBoard();
+                        render();
+                    } else if (state.movesLeft.length === 0) {
+                        endTurn();
+                    } else {
+                        render();
+                        checkAndAutoPass();
+                    }
+                };
+                return;
+            }
+        }
+        bearBtn.classList.add('hidden');
+    }
+
+    // Всплывающие уведомления
+    function notify(text) {
+        const notif = document.getElementById('notification');
+        notif.innerText = text;
+        notif.classList.add('show');
+        setTimeout(() => notif.classList.remove('show'), 2000);
+    }
+
+    // Бросок костей
+    document.getElementById('roll-btn').onclick = () => {
+        if (state.movesLeft.length > 0) return;
+        
+        Sound.playDice();
+
+        const d1 = Math.floor(Math.random() * 6) + 1;
+        const d2 = Math.floor(Math.random() * 6) + 1;
+        state.dice = [d1, d2];
+        state.movesLeft = (d1 === d2) ? [d1, d1, d1, d1] : [d1, d2];
+        state.headCheckersTaken = 0;
+        
+        animateBoardCubes(d1, d2, state.turn);
+        render();
+        checkAndAutoPass();
+    };
+
+    document.getElementById('skip-btn').onclick = endTurn;
+
+    // Переключение режимов
+    document.getElementById('mode-btn').onclick = () => {
+        state.vsAI = !state.vsAI;
+        document.getElementById('mode-btn').innerText = state.vsAI ? "Режим: Против ИИ" : "Режим: Вдвоем";
+        setupInitialBoard();
+        render();
+    };
+
+    // Первый запуск
+    render();
+</script>
+</body>
+</html>
